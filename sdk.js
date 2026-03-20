@@ -13,7 +13,9 @@
   }
 
   function buildLink(id) {
-    var u = new URL(window.location.href);
+    var params = new URLSearchParams(window.location.search);
+    var parentUrl = params.get("rm_parentUrl");
+    var u = new URL(parentUrl ? decodeURIComponent(parentUrl) : window.location.href);
     u.hash = "";
     u.searchParams.set("rm_arId", id);
     return u.toString();
