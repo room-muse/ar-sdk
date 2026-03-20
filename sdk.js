@@ -1,15 +1,7 @@
-/**
- * RoomMuse AR Overlay — QR modal for 3D/AR
- *
- * How to use:
- * 1. Add the script tag to your HTML (e.g. after main.js):
- *    <script src="roommuse-ar-overlay.js"></script>
- * 2. On the button that should open the AR/QR flow, add the attribute data-rm-id
- *    and set its value to the product's id:
- *    <button data-rm-id="${product.id}">3D/AR</button>
- */
 (function () {
   var API = "https://ar-backend-563656133641.us-central1.run.app";
+  var script = document.currentScript;
+  var API_KEY = script ? script.getAttribute("data-api-key") : null;
 
   function loadQRLib(cb) {
     if (typeof QRCode !== "undefined") return cb();
@@ -59,36 +51,40 @@
     });
   }
 
+  function fetchModel(id) {
+    var form = new FormData();
+    form.append("api_key", API_KEY);
+    form.append("product_id", id);
+    form.append("format", "usdz");
+  
+    return fetch(API + "/model", {
+      method: "POST",
+      body: form,
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Failed to fetch model: " + r.status);
+        return r.json();
+      });
+  }
+
   // ── Deep link handler ──
   function handleDeepLink() {
     var params = new URLSearchParams(window.location.search);
     var id = params.get("rm_arId");
     if (!id) return;
 
-    fetch(API + "/items/" + encodeURIComponent(id))
-      .then(function (r) {
-        if (!r.ok) throw new Error("Failed to fetch item: " + r.status);
-        return r.json();
-      })
-      .then(function (item) {
-        console.log("[RoomMuse] item fetched:", item);
-        if (!item.usdzUrl) return;
-
-        var a = document.createElement("a");
-        a.setAttribute("rel", "ar");
-        a.href = item.usdzUrl;
-        a.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
-
-        var img = document.createElement("img");
-        img.src = item.imageUrl || "";
-        a.appendChild(img);
-
-        document.body.appendChild(a);
-        a.click();
-      })
-      .catch(function (e) {
-        console.warn("[RoomMuse] deep link fetch failed:", e);
-      });
+    fetchModel(id).then(function (data) {
+      if (!data.url) return;
+      var a = document.createElement("a");
+      a.setAttribute("rel", "ar");
+      a.href = data.url;
+      a.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
+      var img = document.createElement("img");
+      img.src = "";
+      a.appendChild(img);
+      document.body.appendChild(a);
+      a.click();
+    });
   }
 
   function init() {
