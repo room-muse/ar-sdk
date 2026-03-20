@@ -67,12 +67,11 @@
       });
   }
 
-  // ── Deep link handler ──
-  function handleDeepLink() {
-    var params = new URLSearchParams(window.location.search);
-    var id = params.get("rm_arId");
-    if (!id) return;
-
+  function isMobile() {
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  }
+  
+  function launchAR(id) {
     fetchModel(id).then(function (data) {
       if (!data.url) return;
       var a = document.createElement("a");
@@ -87,11 +86,24 @@
     });
   }
 
+  // ── Deep link handler ──
+  function handleDeepLink() {
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get("rm_arId");
+    if (!id) return;
+    launchAR(id);
+  }
+
   function init() {
     document.body.addEventListener("click", function (e) {
       var btn = e.target.closest("[data-rm-id]");
       if (!btn) return;
-      openModal(btn.getAttribute("data-rm-id"));
+      var id = btn.getAttribute("data-rm-id");
+      if (isMobile()) {
+        launchAR(id);
+      } else {
+        openModal(id);
+      }
     });
 
     handleDeepLink();
