@@ -78,7 +78,7 @@
       if (!data.url) return;
       var a = document.createElement("a");
       a.setAttribute("rel", "ar");
-      a.href = data.url;
+      a.href = data.url + "#allowsContentScaling=0";
       a.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
       var img = document.createElement("img");
       img.src = "";
