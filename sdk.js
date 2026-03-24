@@ -85,24 +85,20 @@
   function launchARAndroid(id) {
     fetchModel(id, "glb").then(function (data) {
       if (!data.url) return;
-
-      var fallback = encodeURIComponent("https://developers.google.com/ar");
+  
       var sceneViewerUrl =
         "intent://arvr.google.com/scene-viewer/1.0" +
         "?file=" + encodeURIComponent(data.url) +
         "&mode=ar_preferred" +
+        "&resizable=false" +
         "#Intent" +
         ";scheme=https" +
         ";package=com.google.android.googlequicksearchbox" +
         ";action=android.intent.action.VIEW" +
-        ";S.browser_fallback_url=" + fallback +
+        ";S.browser_fallback_url=" + encodeURIComponent(window.location.href) +
         ";end;";
-
-      var a = document.createElement("a");
-      a.href = sceneViewerUrl;
-      a.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
-      document.body.appendChild(a);
-      a.click();
+  
+      window.location.href = sceneViewerUrl;
     });
   }
 
