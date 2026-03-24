@@ -3,15 +3,22 @@
   var script = document.currentScript;
   var API_KEY = script ? script.getAttribute("data-api-key") : null;
 
+  // ── Device detection ──────────────────────────────────────────────────────
+  function isIOS() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+  function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+  }
+
+  // ── QR modal (desktop) ────────────────────────────────────────────────────
   function loadQRLib(cb) {
     if (typeof QRCode !== "undefined") return cb();
     var s = document.createElement("script");
-    s.src =
-      "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
     s.onload = cb;
     document.head.appendChild(s);
   }
-
   function buildLink(id) {
     var params = new URLSearchParams(window.location.search);
     var parentUrl = params.get("rm_parentUrl");
@@ -20,7 +27,6 @@
     u.searchParams.set("rm_arId", id);
     return u.toString();
   }
-
   function openModal(id) {
     loadQRLib(function () {
       var ov = document.createElement("div");
@@ -32,9 +38,7 @@
         '<p style="margin:16px 0 0;font-size:13px;color:#666;">Scan to view in AR</p>' +
         '<button id="_rm_close" style="margin-top:16px;padding:8px 20px;border:none;border-radius:8px;background:#233B3D;color:#fff;cursor:pointer;">Close</button>' +
         "</div>";
-
       document.body.appendChild(ov);
-
       new QRCode(document.getElementById("_rm_qr"), {
         text: buildLink(id),
         width: 240,
@@ -42,39 +46,28 @@
         colorDark: "#233B3D",
         colorLight: "#ffffff",
       });
-
-      function close() {
-        document.body.removeChild(ov);
-      }
+      function close() { document.body.removeChild(ov); }
       document.getElementById("_rm_close").onclick = close;
-      ov.onclick = function (e) {
-        if (e.target === ov) close();
-      };
+      ov.onclick = function (e) { if (e.target === ov) close(); };
     });
   }
 
-  function fetchModel(id) {
+  // ── Model fetching ────────────────────────────────────────────────────────
+  function fetchModel(id, format) {
     var form = new FormData();
     form.append("api_key", API_KEY);
     form.append("product_id", id);
-    form.append("format", "usdz");
-  
-    return fetch(API + "/model", {
-      method: "POST",
-      body: form,
-    })
+    form.append("format", format || "usdz");
+    return fetch(API + "/model", { method: "POST", body: form })
       .then(function (r) {
         if (!r.ok) throw new Error("Failed to fetch model: " + r.status);
         return r.json();
       });
   }
 
-  function isMobile() {
-    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  }
-  
-  function launchAR(id) {
-    fetchModel(id).then(function (data) {
+  // ── iOS AR (USDZ + rel=ar) ────────────────────────────────────────────────
+  function launchARiOS(id) {
+    fetchModel(id, "usdz").then(function (data) {
       if (!data.url) return;
       var a = document.createElement("a");
       a.setAttribute("rel", "ar");
@@ -88,7 +81,43 @@
     });
   }
 
-  // ── Deep link handler ──
+  // ── Android AR (GLB + Scene Viewer intent) ────────────────────────────────
+  function launchARAndroid(id) {
+    fetchModel(id, "glb").then(function (data) {
+      if (!data.url) return;
+
+      var fallback = encodeURIComponent("https://developers.google.com/ar");
+      var sceneViewerUrl =
+        "intent://arvr.google.com/scene-viewer/1.0" +
+        "?file=" + encodeURIComponent(data.url) +
+        "&mode=ar_preferred" +
+        "#Intent" +
+        ";scheme=https" +
+        ";package=com.google.android.googlequicksearchbox" +
+        ";action=android.intent.action.VIEW" +
+        ";S.browser_fallback_url=" + fallback +
+        ";end;";
+
+      var a = document.createElement("a");
+      a.href = sceneViewerUrl;
+      a.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
+      document.body.appendChild(a);
+      a.click();
+    });
+  }
+
+  // ── Unified launcher ──────────────────────────────────────────────────────
+  function launchAR(id) {
+    if (isIOS()) {
+      launchARiOS(id);
+    } else if (isAndroid()) {
+      launchARAndroid(id);
+    } else {
+      openModal(id); // Shouldn't reach here from click handler, but safe fallback
+    }
+  }
+
+  // ── Deep-link handler (QR scan lands here) ────────────────────────────────
   function handleDeepLink() {
     var params = new URLSearchParams(window.location.search);
     var id = params.get("rm_arId");
@@ -96,18 +125,18 @@
     launchAR(id);
   }
 
+  // ── Boot ──────────────────────────────────────────────────────────────────
   function init() {
     document.body.addEventListener("click", function (e) {
       var btn = e.target.closest("[data-rm-id]");
       if (!btn) return;
       var id = btn.getAttribute("data-rm-id");
-      if (isMobile()) {
+      if (isIOS() || isAndroid()) {
         launchAR(id);
       } else {
         openModal(id);
       }
     });
-
     handleDeepLink();
   }
 
