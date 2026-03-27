@@ -5,8 +5,10 @@
 
   // ── Device detection ──────────────────────────────────────────────────────
   function isIOS() {
-    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (/MacIntel|Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   }
+
   function isAndroid() {
     return /Android/i.test(navigator.userAgent);
   }
